@@ -96,28 +96,28 @@ class ConstantLengthDataset(IterableDataset):
 
 def setup_logging(args):
     project_name = args.model_ckpt.split("/")[-1]
-    logger = logging.getLogger(__name__)
+    # logger = logging.getLogger(__name__)
     log_dir = Path(args.save_dir) / "log/"
     log_dir.mkdir(exist_ok=True)
     filename = f"debug_{accelerator.process_index}.log"
-    logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.INFO,
-        handlers=[logging.FileHandler(log_dir / filename), logging.StreamHandler()],
-    )
+    # logging.basicConfig(
+    #     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    #     datefmt="%m/%d/%Y %H:%M:%S",
+    #     level=logging.INFO,
+    #     handlers=[logging.FileHandler(log_dir / filename), logging.StreamHandler()],
+    # )
     if accelerator.is_main_process:  # we only want to setup logging once
         accelerator.init_trackers(project_name, vars(args))
         run_name = accelerator.trackers[0].run.name
-        logger.setLevel(logging.INFO)
+        # logger.setLevel(logging.INFO)
         datasets.utils.logging.set_verbosity_info()
         transformers.utils.logging.set_verbosity_info()
     else:
         run_name = ""
-        logger.setLevel(logging.ERROR)
+        # logger.setLevel(logging.ERROR)
         datasets.utils.logging.set_verbosity_error()
         transformers.utils.logging.set_verbosity_error()
-    return logger, run_name
+    return run_name
 
 
 def create_dataloaders(args):
@@ -151,9 +151,9 @@ def get_grouped_params(model, args, no_decay=["bias", "ln_1.weight", "ln_2.weigh
 
 
 def log_metrics(step, metrics):
-    logger.info(f"Step {step}: {metrics}")
-    if accelerator.is_main_process:
-        accelerator.log(metrics, step)
+    # logger.info(f"Step {step}: {metrics}")
+    # if accelerator.is_main_process:
+    accelerator.log(metrics, step)
 
 
 def compute_tflops(elapsed_time, accelerator, args):
@@ -207,8 +207,8 @@ if accelerator.is_main_process:
     hf_repo = Repository(args.save_dir, clone_from=args.model_ckpt)
 
 # Logging
-logger, run_name = setup_logging(args)
-logger.info(accelerator.state)
+run_name = setup_logging(args)
+# logger.info(accelerator.state)
 
 # Checkout new branch on repo
 if accelerator.is_main_process:
@@ -301,9 +301,9 @@ for step, batch in enumerate(train_dataloader, start=1):
         loss_tracking = 0
         completed_steps += 1
     if step % args.save_checkpoint_steps == 0:
-        logger.info("Evaluating and saving model checkpoint")
+        # logger.info("Evaluating and saving model checkpoint")
         eval_loss, perplexity = evaluate(args)
-        log_metrics(step, {"loss/eval": eval_loss, "perplexity": perplexity})
+        # log_metrics(step, {"loss/eval": eval_loss, "perplexity": perplexity})
         accelerator.wait_for_everyone()
         save_dir = os.path.join(args.save_dir, f"step_{step}")
         accelerator.save_state(save_dir)
@@ -314,13 +314,14 @@ for step, batch in enumerate(train_dataloader, start=1):
         break
 
 # Evaluate and save the last checkpoint
-logger.info("Evaluating and saving model after training")
+# logger.info("Evaluating and saving model after training")
 eval_loss, perplexity = evaluate(args)
-log_metrics(step, {"loss/eval": eval_loss, "perplexity": perplexity})
-accelerator.wait_for_everyone()
-unwrapped_model = accelerator.unwrap_model(model)
-unwrapped_model.save_pretrained(args.save_dir, save_function=accelerator.save)
-save_dir = os.path.join(args.save_dir, f"step_{step}")
-accelerator.save_state(save_dir)
-if accelerator.is_main_process:
-    hf_repo.push_to_hub(commit_message="final model")
+# log_metrics(step, {"loss/eval": eval_loss, "perplexity": perplexity})
+# accelerator.wait_for_everyone()
+# unwrapped_model = accelerator.unwrap_model(model)
+# unwrapped_model.save_pretrained(args.save_dir, save_function=accelerator.save)
+# save_dir = os.path.join(args.save_dir, f"step_{step}")
+# accelerator.save_state(save_dir)
+# if accelerator.is_main_process:
+#     hf_repo.push_to_hub(commit_message="final model")
+accelerator.end_training()
