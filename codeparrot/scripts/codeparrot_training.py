@@ -223,7 +223,8 @@ if args.gradient_checkpointing:
 tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
 
 # Load dataset and dataloader
-train_dataloader, eval_dataloader = create_dataloaders(args)
+with accelerator.main_process_first():
+    train_dataloader, eval_dataloader = create_dataloaders(args)
 
 # Prepare the optimizer and learning rate scheduler
 optimizer = AdamW(get_grouped_params(model, args), lr=args.learning_rate)
