@@ -107,7 +107,7 @@ def setup_logging(args):
     #     handlers=[logging.FileHandler(log_dir / filename), logging.StreamHandler()],
     # )
     if accelerator.is_main_process:  # we only want to setup logging once
-        accelerator.init_trackers(project_name, vars(args))
+        # accelerator.init_trackers(project_name, vars(args))
         run_name = accelerator.trackers[0].run.name
         # logger.setLevel(logging.INFO)
         datasets.utils.logging.set_verbosity_info()
@@ -269,7 +269,7 @@ for step, batch in enumerate(train_dataloader, start=1):
     loss = model(batch, labels=batch, use_cache=False).loss
     avg_loss = accelerator.gather(loss.repeat(args.train_batch_size)).mean()
     loss_tracking += avg_loss.item() / args.gradient_accumulation_steps
-    log_metrics(step, {"samples": step * samples_per_step, "loss_per_step/train": loss.item()})
+    # log_metrics(step, {"samples": step * samples_per_step, "loss_per_step/train": loss.item()})
     loss = loss / args.gradient_accumulation_steps
     if step % args.gradient_accumulation_steps != 0:
         # Prevent backward from doing gradient all_reduce in every step
@@ -287,15 +287,14 @@ for step, batch in enumerate(train_dataloader, start=1):
         optimizer.zero_grad()
         elapsed_time = time.time() - t_start
         tflops = compute_tflops(elapsed_time, accelerator, args)
-        log_metrics(
-            step,
+        accelerator.print(
             {
                 "steps": completed_steps,
                 "loss/train": loss_tracking,
                 "lr": lr,
                 "tflops": tflops,
                 "time_per_iteration": elapsed_time,
-            },
+            }
         )
         t_start = time.time()
         loss_tracking = 0
