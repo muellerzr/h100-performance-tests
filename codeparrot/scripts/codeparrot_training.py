@@ -300,22 +300,22 @@ for step, batch in enumerate(train_dataloader, start=1):
         t_start = time.time()
         loss_tracking = 0
         completed_steps += 1
-    if step % args.save_checkpoint_steps == 0:
-        # logger.info("Evaluating and saving model checkpoint")
-        eval_loss, perplexity = evaluate(args)
-        # log_metrics(step, {"loss/eval": eval_loss, "perplexity": perplexity})
-        accelerator.wait_for_everyone()
-        save_dir = os.path.join(args.save_dir, f"step_{step}")
-        accelerator.save_state(save_dir)
-        if accelerator.is_main_process:
-            hf_repo.push_to_hub(commit_message=f"step {step}")
-        model.train()
+    # if step % args.save_checkpoint_steps == 0:
+    #     # logger.info("Evaluating and saving model checkpoint")
+    #     eval_loss, perplexity = evaluate(args)
+    #     # log_metrics(step, {"loss/eval": eval_loss, "perplexity": perplexity})
+    #     accelerator.wait_for_everyone()
+    #     save_dir = os.path.join(args.save_dir, f"step_{step}")
+    #     accelerator.save_state(save_dir)
+    #     if accelerator.is_main_process:
+    #         hf_repo.push_to_hub(commit_message=f"step {step}")
+    #     model.train()
     if completed_steps >= args.max_train_steps:
         break
 
 # Evaluate and save the last checkpoint
 # logger.info("Evaluating and saving model after training")
-eval_loss, perplexity = evaluate(args)
+# eval_loss, perplexity = evaluate(args)
 # log_metrics(step, {"loss/eval": eval_loss, "perplexity": perplexity})
 # accelerator.wait_for_everyone()
 # unwrapped_model = accelerator.unwrap_model(model)
