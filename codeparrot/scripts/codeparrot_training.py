@@ -121,12 +121,12 @@ def setup_logging(args):
 
 
 def create_dataloaders(args):
-    ds_kwargs = {"streaming": True}
-    train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
-    # train_data = load_dataset(args.dataset_name_train, split="train[:1%]")
+    # ds_kwargs = {"streaming": True}
+    # train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
+    train_data = load_dataset(args.dataset_name_train, split="train[:1%]")
     train_data = train_data.shuffle(buffer_size=args.shuffle_buffer, seed=args.seed)
-    valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
-    # valid_data = load_dataset(args.dataset_name_train, split="train[:1%]")
+    # valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
+    valid_data = load_dataset(args.dataset_name_train, split="train[:1%]")
     train_dataset = ConstantLengthDataset(
         tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized
     )
@@ -197,7 +197,7 @@ parser = HfArgumentParser(TrainingArguments)
 args = parser.parse_args()
 
 # Accelerator
-accelerator = Accelerator(log_with=["wandb", "tensorboard"], logging_dir=f"{args.save_dir}/log", split_batches=True)
+accelerator = Accelerator(log_with=["wandb", "tensorboard"], logging_dir=f"{args.save_dir}/log")
 acc_state = {str(k): str(v) for k, v in accelerator.state.__dict__.items()}
 
 args = Namespace(**vars(args), **acc_state)
