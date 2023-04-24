@@ -128,7 +128,7 @@ def create_dataloaders(args):
     # valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
     valid_data = load_dataset(args.dataset_name_train, split="train[:1%]")
     train_dataset = ConstantLengthDataset(
-        tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized
+        tokenizer, train_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized
     )
     valid_dataset = ConstantLengthDataset(
         tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized
@@ -222,9 +222,11 @@ if args.gradient_checkpointing:
     model.gradient_checkpointing_enable()
 tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
 
+print(f'Creating dataset')
 # Load dataset and dataloader
 with accelerator.main_process_first():
     train_dataloader, eval_dataloader = create_dataloaders(args)
+    print("Dataloader created")
 
 # Prepare the optimizer and learning rate scheduler
 optimizer = AdamW(get_grouped_params(model, args), lr=args.learning_rate)
