@@ -197,7 +197,7 @@ parser = HfArgumentParser(TrainingArguments)
 args = parser.parse_args()
 
 # Accelerator
-accelerator = Accelerator(log_with=["wandb", "tensorboard"], logging_dir=f"{args.save_dir}/log")
+accelerator = Accelerator(log_with=["wandb", "tensorboard"], logging_dir=f"{args.save_dir}/log", split_batches=True)
 acc_state = {str(k): str(v) for k, v in accelerator.state.__dict__.items()}
 
 args = Namespace(**vars(args), **acc_state)
