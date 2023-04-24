@@ -73,7 +73,7 @@ class ConstantLengthDataset(IterableDataset):
                     if self.infinite:
                         iterator = iter(self.dataset)
                         self.epoch += 1
-                        logger.info(f"Dataset epoch: {self.epoch}")
+                        # logger.info(f"Dataset epoch: {self.epoch}")
                     else:
                         more_examples = False
                         break
@@ -97,8 +97,8 @@ class ConstantLengthDataset(IterableDataset):
 def setup_logging(args):
     project_name = args.model_ckpt.split("/")[-1]
     # logger = logging.getLogger(__name__)
-    log_dir = Path(args.save_dir) / "log/"
-    log_dir.mkdir(exist_ok=True)
+    # log_dir = Path(args.save_dir) / "log/"
+    # log_dir.mkdir(exist_ok=True)
     filename = f"debug_{accelerator.process_index}.log"
     # logging.basicConfig(
     #     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
