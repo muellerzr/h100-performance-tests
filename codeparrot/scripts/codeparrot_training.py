@@ -227,7 +227,7 @@ print(f'Creating dataset')
 with accelerator.main_process_first():
     train_dataloader, eval_dataloader = create_dataloaders(args)
     print("Dataloader created")
-
+accelerator.wait_for_everyone()
 # Prepare the optimizer and learning rate scheduler
 optimizer = AdamW(get_grouped_params(model, args), lr=args.learning_rate)
 lr_scheduler = get_scheduler(
@@ -236,7 +236,7 @@ lr_scheduler = get_scheduler(
     num_warmup_steps=args.num_warmup_steps,
     num_training_steps=args.max_train_steps,
 )
-accelerator.register_for_checkpointing(lr_scheduler)
+# accelerator.register_for_checkpointing(lr_scheduler)
 
 
 def get_lr():
