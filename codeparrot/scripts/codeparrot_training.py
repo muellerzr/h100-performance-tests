@@ -73,7 +73,7 @@ class ConstantLengthDataset(IterableDataset):
                     if self.infinite:
                         iterator = iter(self.dataset)
                         self.epoch += 1
-                        # logger.info(f"Dataset epoch: {self.epoch}")
+                        logger.info(f"Dataset epoch: {self.epoch}")
                     else:
                         more_examples = False
                         break
@@ -97,8 +97,8 @@ class ConstantLengthDataset(IterableDataset):
 def setup_logging(args):
     project_name = args.model_ckpt.split("/")[-1]
     # logger = logging.getLogger(__name__)
-    # log_dir = Path(args.save_dir) / "log/"
-    # log_dir.mkdir(exist_ok=True)
+    log_dir = Path(args.save_dir) / "log/"
+    log_dir.mkdir(exist_ok=True)
     filename = f"debug_{accelerator.process_index}.log"
     # logging.basicConfig(
     #     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -107,17 +107,17 @@ def setup_logging(args):
     #     handlers=[logging.FileHandler(log_dir / filename), logging.StreamHandler()],
     # )
     if accelerator.is_main_process:  # we only want to setup logging once
-        # accelerator.init_trackers(project_name, vars(args))
-        # run_name = accelerator.trackers[0].run.name
+        accelerator.init_trackers(project_name, vars(args))
+        run_name = accelerator.trackers[0].run.name
         # logger.setLevel(logging.INFO)
         datasets.utils.logging.set_verbosity_info()
         transformers.utils.logging.set_verbosity_info()
     else:
-        # run_name = ""
+        run_name = ""
         # logger.setLevel(logging.ERROR)
         datasets.utils.logging.set_verbosity_error()
         transformers.utils.logging.set_verbosity_error()
-    return project_name
+    return run_name
 
 
 def create_dataloaders(args):
@@ -215,10 +215,10 @@ if accelerator.is_main_process:
     hf_repo.git_checkout(run_name, create_branch_ok=True)
 
 # Load model and tokenizer
-model = AutoModelForCausalLM.from_pretrained(args.model_ckpt)
+model = AutoModelForCausalLM.from_pretrained(args.save_dir)
 if args.gradient_checkpointing:
     model.gradient_checkpointing_enable()
-tokenizer = AutoTokenizer.from_pretrained(args.model_ckpt)
+tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
 
 # Load dataset and dataloader
 train_dataloader, eval_dataloader = create_dataloaders(args)
@@ -269,7 +269,7 @@ for step, batch in enumerate(train_dataloader, start=1):
     loss = model(batch, labels=batch, use_cache=False).loss
     avg_loss = accelerator.gather(loss.repeat(args.train_batch_size)).mean()
     loss_tracking += avg_loss.item() / args.gradient_accumulation_steps
-    # log_metrics(step, {"samples": step * samples_per_step, "loss_per_step/train": loss.item()})
+    log_metrics(step, {"samples": step * samples_per_step, "loss_per_step/train": loss.item()})
     loss = loss / args.gradient_accumulation_steps
     if step % args.gradient_accumulation_steps != 0:
         # Prevent backward from doing gradient all_reduce in every step
@@ -287,14 +287,15 @@ for step, batch in enumerate(train_dataloader, start=1):
         optimizer.zero_grad()
         elapsed_time = time.time() - t_start
         tflops = compute_tflops(elapsed_time, accelerator, args)
-        accelerator.print(
+        log_metrics(
+            step,
             {
                 "steps": completed_steps,
                 "loss/train": loss_tracking,
                 "lr": lr,
                 "tflops": tflops,
                 "time_per_iteration": elapsed_time,
-            }
+            },
         )
         t_start = time.time()
         loss_tracking = 0
@@ -323,4 +324,4 @@ for step, batch in enumerate(train_dataloader, start=1):
 # accelerator.save_state(save_dir)
 # if accelerator.is_main_process:
 #     hf_repo.push_to_hub(commit_message="final model")
-# accelerator.end_training()
+accelerator.end_training()
