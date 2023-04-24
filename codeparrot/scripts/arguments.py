@@ -15,10 +15,10 @@ class TrainingArguments:
         default="./", metadata={"help": "Save dir where model repo is cloned and models updates are saved to."}
     )
     dataset_name_train: Optional[str] = field(
-        default="codeparrot/codeparrot-clean-train", metadata={"help": "Name or path of training dataset."}
+        default="loubnabnl/tokenized-codeparrot-train", metadata={"help": "Name or path of training dataset."}
     )
     dataset_name_valid: Optional[str] = field(
-        default="codeparrot/codeparrot-clean-valid", metadata={"help": "Name or path of validation dataset."}
+        default="loubnabnl/tokenized-codeparrot-valid", metadata={"help": "Name or path of validation dataset."}
     )
     train_batch_size: Optional[int] = field(default=2, metadata={"help": "Batch size for training."})
     valid_batch_size: Optional[int] = field(default=2, metadata={"help": "Batch size for evaluation."})
