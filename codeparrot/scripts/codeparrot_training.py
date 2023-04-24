@@ -124,7 +124,7 @@ def create_dataloaders(args):
     # ds_kwargs = {"streaming": True}
     # train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
     train_data = load_dataset(args.dataset_name_train, split="train[:1%]")
-    train_data = train_data.shuffle(buffer_size=args.shuffle_buffer, seed=args.seed)
+    train_data = train_data.shuffle(seed=args.seed)
     # valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
     valid_data = load_dataset(args.dataset_name_train, split="train[:1%]")
     train_dataset = ConstantLengthDataset(
@@ -133,7 +133,7 @@ def create_dataloaders(args):
     valid_dataset = ConstantLengthDataset(
         tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized
     )
-    train_dataset = train_dataset.shuffle(buffer_size=args.shuffle_buffer)
+    train_dataset = train_dataset.shuffle()
     train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True)
     eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
     return train_dataloader, eval_dataloader
