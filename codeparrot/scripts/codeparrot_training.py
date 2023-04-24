@@ -113,11 +113,11 @@ def setup_logging(args):
         datasets.utils.logging.set_verbosity_info()
         transformers.utils.logging.set_verbosity_info()
     else:
-        run_name = ""
+        # run_name = ""
         # logger.setLevel(logging.ERROR)
         datasets.utils.logging.set_verbosity_error()
         transformers.utils.logging.set_verbosity_error()
-    return run_name
+    return project_name
 
 
 def create_dataloaders(args):
