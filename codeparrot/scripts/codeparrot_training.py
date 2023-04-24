@@ -108,7 +108,7 @@ def setup_logging(args):
     # )
     if accelerator.is_main_process:  # we only want to setup logging once
         # accelerator.init_trackers(project_name, vars(args))
-        run_name = accelerator.trackers[0].run.name
+        # run_name = accelerator.trackers[0].run.name
         # logger.setLevel(logging.INFO)
         datasets.utils.logging.set_verbosity_info()
         transformers.utils.logging.set_verbosity_info()
@@ -323,4 +323,4 @@ for step, batch in enumerate(train_dataloader, start=1):
 # accelerator.save_state(save_dir)
 # if accelerator.is_main_process:
 #     hf_repo.push_to_hub(commit_message="final model")
-accelerator.end_training()
+# accelerator.end_training()
