@@ -198,8 +198,8 @@ args = parser.parse_args()
 accelerator = Accelerator(
     gradient_accumulation_steps=args.gradient_accumulation_steps,
     log_with=["wandb"],
-    dispatch_batches=True,
-    split_batches=True
+    dispatch_batches=False,
+    split_batches=False
 )
 acc_state = {str(k): str(v) for k, v in accelerator.state.__dict__.items()}
 
