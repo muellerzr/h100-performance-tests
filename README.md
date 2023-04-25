@@ -35,6 +35,8 @@ accelerate launch --config_file h100-stuff/fp8.yml h100-stuff/codeparrot/scripts
 
 ## fp8 or bf16 on multi-node
 
+### Note: Currently has issues ###
+
 Change each yml to be (maintaining the `mixed_precision` already stored there):
 
 ```diff
