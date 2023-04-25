@@ -113,7 +113,7 @@ def setup_logging(args=None):
         logger.setLevel(logging.ERROR)
         datasets.utils.logging.set_verbosity_error()
         transformers.utils.logging.set_verbosity_error()
-    return logger, run_name
+    return logger
 
 
 def create_dataloaders(args):
@@ -146,7 +146,7 @@ acc_state = {str(k): str(v) for k, v in accelerator.state.__dict__.items()}
 
 
 # Logging
-logger, run_name = setup_logging()
+logger = setup_logging()
 logger.info(f"Created Accelerator: {accelerator.state}")
 
 # Load model and tokenizer
