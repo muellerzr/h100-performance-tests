@@ -28,7 +28,7 @@ Change each yml to be (maintaining the `mixed_precision` already stored there):
 compute_environment: LOCAL_MACHINE
 deepspeed_config: {}
 -distributed_type: 'NO'
--distributed_type: 'MULTI_GPU'
++distributed_type: 'MULTI_GPU'
 downcast_bf16: 'no'
 fsdp_config: {}
 machine_rank: 0
