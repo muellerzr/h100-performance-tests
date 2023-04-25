@@ -97,7 +97,7 @@ class ConstantLengthDataset(IterableDataset):
 def setup_logging(args):
     project_name = args.model_ckpt.split("/")[-1]
     logger = logging.getLogger(__name__)
-    log_dir = Path(args.save_dir) / "log/"
+    log_dir = Path("log/")
     log_dir.mkdir(exist_ok=True)
     filename = f"debug_{accelerator.process_index}.log"
     logging.basicConfig(
