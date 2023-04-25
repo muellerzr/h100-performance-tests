@@ -2,11 +2,12 @@
 
 ## To run:
 
-1. Install requirements `pip install -r requirements.txt` (and ensure you have `git-lfs` installed. [See here for directions](https://askubuntu.com/questions/799341/how-to-install-git-lfs-on-ubuntu-16-04))
-2. `huggingface-hub login`, and pass in your [Hugging Face API token](http://hf.co/settings/token)
-3. `wandb login` to track with wandb
-4. `mkdir model` to create a model. **Note: Should be done one directory outside this directory**
-5. `accelerate launch --config_file h100-stuff/fp8.yml h100-stuff/codeparrot/scripts/codeparrot_training.py --train_batch_size 32 --eval_batch_size 32 --max_train_steps 100 --save_dir model/`
+1. Clone this repository
+2. Install requirements `pip install -r h100-stuff/requirements.txt` (and ensure you have `git-lfs` installed. [See here for directions](https://askubuntu.com/questions/799341/how-to-install-git-lfs-on-ubuntu-16-04))
+3. `huggingface-hub login`, and pass in your [Hugging Face API token](http://hf.co/settings/token)
+4. `wandb login` to track with wandb
+5. `mkdir model` to create a model. **Note: Should be done one directory outside this directory**
+6. `accelerate launch --config_file h100-stuff/fp8.yml h100-stuff/codeparrot/scripts/codeparrot_training.py --train_batch_size 32 --eval_batch_size 32 --max_train_steps 100 --save_dir model/`
 
 ## To run a variety of setups:
 
