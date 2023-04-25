@@ -220,7 +220,7 @@ if accelerator.is_main_process:
     hf_repo.git_checkout(run_name, create_branch_ok=True)
 
 # Load model and tokenizer
-model = AutoModelForCausalLM.from_pretrained(args.model_ckpt, cutoffs=[])
+model = AutoModelForCausalLM.from_pretrained(args.model_ckpt)
 if args.gradient_checkpointing:
     model.gradient_checkpointing_enable()
 tokenizer = AutoTokenizer.from_pretrained(args.model_ckpt)
