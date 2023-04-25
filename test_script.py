@@ -1,22 +1,16 @@
 import logging
-import os
-import time
-from argparse import Namespace
 from pathlib import Path
 
 import datasets
 import torch
 from accelerate import Accelerator
-# from arguments import TrainingArguments
 from datasets import load_dataset
-from huggingface_hub import Repository
-from torch.optim import AdamW
 from torch.utils.data import IterableDataset
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.datapipes.iter.combinatorics import ShufflerIterDataPipe
 
 import transformers
-from transformers import AutoModelForCausalLM, AutoTokenizer, HfArgumentParser, get_scheduler, set_seed
+from transformers import AutoTokenizer
 
 
 class ConstantLengthDataset(IterableDataset):
@@ -109,7 +103,6 @@ def setup_logging(args=None):
         datasets.utils.logging.set_verbosity_info()
         transformers.utils.logging.set_verbosity_info()
     else:
-        run_name = ""
         logger.setLevel(logging.ERROR)
         datasets.utils.logging.set_verbosity_error()
         transformers.utils.logging.set_verbosity_error()
@@ -132,17 +125,8 @@ def create_dataloaders(args):
     eval_dataloader = DataLoader(valid_dataset, batch_size=2)
     return train_dataloader, eval_dataloader
 
-# Settings
-# parser = HfArgumentParser(TrainingArguments)
-# args = parser.parse_args()
-
 # Accelerator
 accelerator = Accelerator()
-acc_state = {str(k): str(v) for k, v in accelerator.state.__dict__.items()}
-
-# args = Namespace(**vars(args), **acc_state)
-# samples_per_step = accelerator.state.num_processes * args.train_batch_size
-# set_seed(args.seed)
 
 
 # Logging
