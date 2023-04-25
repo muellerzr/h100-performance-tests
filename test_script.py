@@ -118,18 +118,18 @@ def setup_logging(args=None):
 
 def create_dataloaders(args):
     ds_kwargs = {"streaming": True}
-    train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
-    train_data = train_data.shuffle(buffer_size=args.shuffle_buffer, seed=args.seed)
-    valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
+    train_data = load_dataset("codeparrot/codeparrot-clean-train", split="train", **ds_kwargs)
+    train_data = train_data.shuffle(buffer_size=10000, seed=42)
+    valid_data = load_dataset("codeparrot/codeparrot-clean-valid", split="train", **ds_kwargs)
     train_dataset = ConstantLengthDataset(
-        tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized
+        tokenizer, train_data, infinite=True, seq_length=1024, tokenized=False
     )
     valid_dataset = ConstantLengthDataset(
-        tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized
+        tokenizer, valid_data, infinite=False, seq_length=1024, tokenized=False
     )
-    train_dataset = train_dataset.shuffle(buffer_size=args.shuffle_buffer)
-    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True)
-    eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
+    train_dataset = train_dataset.shuffle(buffer_size=10000)
+    train_dataloader = DataLoader(train_dataset, batch_size=2, shuffle=True)
+    eval_dataloader = DataLoader(valid_dataset, batch_size=2)
     return train_dataloader, eval_dataloader
 
 # Settings
