@@ -270,6 +270,8 @@ if args.resume_from_checkpoint:
 
 # Train model
 model.train()
+print(f'On process: {accelerator.process_index}')
+accelerator.wait_for_everyone()
 completed_steps = 0
 t_start = time.time()
 loss_tracking = 0
