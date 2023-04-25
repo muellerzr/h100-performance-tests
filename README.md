@@ -13,12 +13,24 @@
 
 ### fp8 or bf16 single node
 
+Big model: 
+
 ```bash
 accelerate launch --config_file h100-stuff/fp8.yml h100-stuff/codeparrot/scripts/codeparrot_training.py --train_batch_size 32 --eval_batch_size 32 --max_train_steps 100 --save_dir model/
 ```
 
 ```bash
 accelerate launch --config_file h100-stuff/bf16.yml h100-stuff/codeparrot/scripts/codeparrot_training.py --train_batch_size 32 --eval_batch_size 32 --max_train_steps 100 --save_dir model/
+```
+
+Small model:
+
+```bash
+accelerate launch --config_file h100-stuff/bf16.yml h100-stuff/codeparrot/scripts/codeparrot_training.py --max_train_steps 100 --save_dir model/ --model_ckpt codeparrot/codeparrot-small --train_batch_size 64 --valid_batch_size 64
+```
+
+```bash
+accelerate launch --config_file h100-stuff/fp8.yml h100-stuff/codeparrot/scripts/codeparrot_training.py --max_train_steps 100 --save_dir model/ --model_ckpt codeparrot/codeparrot-small --train_batch_size 64 --valid_batch_size 64
 ```
 
 ## fp8 or bf16 on multi-node
