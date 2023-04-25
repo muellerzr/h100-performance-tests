@@ -197,8 +197,7 @@ args = parser.parse_args()
 # Accelerator
 accelerator = Accelerator(
     gradient_accumulation_steps=args.gradient_accumulation_steps,
-    log_with=["wandb", "tensorboard"],
-    logging_dir=f"{args.save_dir}/log",
+    log_with=["wandb"],
 )
 acc_state = {str(k): str(v) for k, v in accelerator.state.__dict__.items()}
 
