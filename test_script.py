@@ -4,6 +4,7 @@ from pathlib import Path
 import datasets
 import torch
 from accelerate import Accelerator
+from accelerate.utils import InitProcessGroupKwargs
 from datasets import load_dataset
 from torch.utils.data import IterableDataset
 from torch.utils.data.dataloader import DataLoader
@@ -53,7 +54,9 @@ class ConstantLengthDataset(IterableDataset):
             self.content_field = "content"
 
     def __iter__(self):
+        logger.info("Beginning iteration")
         iterator = iter(self.dataset)
+        logger.info("Grabbed iterator")
         more_examples = True
         while more_examples:
             buffer, buffer_len = [], 0
@@ -61,8 +64,10 @@ class ConstantLengthDataset(IterableDataset):
                 if buffer_len >= self.max_buffer_size:
                     break
                 try:
+                    logger.info(f'Content field: {self.content_field}')
                     buffer.append(next(iterator)[self.content_field])
                     buffer_len += len(buffer[-1])
+                    logger.info(f"Buffer: {buffer}")
                 except StopIteration:
                     if self.infinite:
                         iterator = iter(self.dataset)
@@ -126,6 +131,8 @@ def create_dataloaders(args):
     return train_dataloader, eval_dataloader
 
 # Accelerator
+from datetime import timedelta
+# kwargs = InitProcessGroupKwargs(timeout=timedelta(seconds=30))
 accelerator = Accelerator()
 
 
@@ -148,4 +155,5 @@ train_dataloader, eval_dataloader = accelerator.prepare(
 
 logger.info(f'Started iterating...')
 for batch in train_dataloader:
-    print(batch)
+    logger.info(batch)
+    break
