@@ -1,8 +1,5 @@
-import logging
-from pathlib import Path
 from contextlib import suppress
 
-import datasets
 import torch
 import os
 from datasets import load_dataset
@@ -10,8 +7,220 @@ from torch.utils.data import IterableDataset
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.datapipes.iter.combinatorics import ShufflerIterDataPipe
 
-import transformers
+from typing import Mapping
 from transformers import AutoTokenizer
+
+from dataclasses import dataclass
+import math
+
+def _gpu_broadcast(data, src=0):
+    def _gpu_broadcast_one(tensor, src=0):
+        torch.distributed.broadcast(tensor, src=src)
+        return tensor
+
+    return recursively_apply(_gpu_broadcast_one, data, error_on_other_type=True, src=src)
+
+def broadcast(tensor, from_process: int = 0):
+    """
+    Recursively broadcast tensor in a nested list/tuple/dictionary of tensors to all devices.
+
+    Args:
+        tensor (nested list/tuple/dictionary of `torch.Tensor`):
+            The data to gather.
+        from_process (`int`, *optional*, defaults to 0):
+            The process from which to send the data
+
+    Returns:
+        The same data structure as `tensor` with all tensors broadcasted to the proper device.
+    """
+    return _gpu_broadcast(tensor, src=from_process)
+
+def find_batch_size(data):
+    """
+    Recursively finds the batch size in a nested list/tuple/dictionary of lists of tensors.
+
+    Args:
+        data (nested list/tuple/dictionary of `torch.Tensor`): The data from which to find the batch size.
+
+    Returns:
+        `int`: The batch size.
+    """
+    if isinstance(data, (tuple, list)):
+        return find_batch_size(data[0])
+    elif isinstance(data, Mapping):
+        for k in data.keys():
+            return find_batch_size(data[k])
+    elif not isinstance(data, torch.Tensor):
+        raise TypeError(f"Can only find the batch size of tensors but got {type(data)}.")
+    return data.shape[0]
+
+@dataclass
+class TensorInformation:
+    shape: torch.Size
+    dtype: torch.dtype
+
+def is_torch_tensor(tensor):
+    return isinstance(tensor, torch.Tensor)
+
+def is_tensor_information(tensor_info):
+    return isinstance(tensor_info, TensorInformation)
+
+def send_to_device(tensor, device, non_blocking=False):
+    """
+    Recursively sends the elements in a nested list/tuple/dictionary of tensors to a given device.
+
+    Args:
+        tensor (nested list/tuple/dictionary of `torch.Tensor`):
+            The data to send to a given device.
+        device (`torch.device`):
+            The device to send the data to.
+
+    Returns:
+        The same data structure as `tensor` with all tensors sent to the proper device.
+    """
+
+    def _send_to_device(t, device, non_blocking):
+        try:
+            return t.to(device, non_blocking=non_blocking)
+        except TypeError:  # .to() doesn't accept non_blocking as kwarg
+            return t.to(device)
+
+    def _has_to_method(t):
+        return hasattr(t, "to")
+
+    return recursively_apply(_send_to_device, tensor, device, non_blocking, test_type=_has_to_method)
+
+def slice_tensors(data, tensor_slice):
+    """
+    Recursively takes a slice in a nested list/tuple/dictionary of tensors.
+
+    Args:
+        data (nested list/tuple/dictionary of `torch.Tensor`):
+            The data to slice.
+        tensor_slice (`slice`):
+            The slice to take.
+
+    Returns:
+        The same data structure as `data` with all the tensors slices.
+    """
+
+    def _slice_tensor(tensor, tensor_slice):
+        return tensor[tensor_slice]
+
+    return recursively_apply(_slice_tensor, data, tensor_slice)
+
+def recursively_apply(func, data, *args, test_type=is_torch_tensor, error_on_other_type=False, **kwargs):
+    """
+    Recursively apply a function on a data structure that is a nested list/tuple/dictionary of a given base type.
+
+    Args:
+        func (`callable`):
+            The function to recursively apply.
+        data (nested list/tuple/dictionary of `main_type`):
+            The data on which to apply `func`
+        *args:
+            Positional arguments that will be passed to `func` when applied on the unpacked data.
+        main_type (`type`, *optional*, defaults to `torch.Tensor`):
+            The base type of the objects to which apply `func`.
+        error_on_other_type (`bool`, *optional*, defaults to `False`):
+            Whether to return an error or not if after unpacking `data`, we get on an object that is not of type
+            `main_type`. If `False`, the function will leave objects of types different than `main_type` unchanged.
+        **kwargs:
+            Keyword arguments that will be passed to `func` when applied on the unpacked data.
+
+    Returns:
+        The same data structure as `data` with `func` applied to every object of type `main_type`.
+    """
+    if isinstance(data, (tuple, list)):
+        return honor_type(
+            data,
+            (
+                recursively_apply(
+                    func, o, *args, test_type=test_type, error_on_other_type=error_on_other_type, **kwargs
+                )
+                for o in data
+            ),
+        )
+    elif isinstance(data, Mapping):
+        return type(data)(
+            {
+                k: recursively_apply(
+                    func, v, *args, test_type=test_type, error_on_other_type=error_on_other_type, **kwargs
+                )
+                for k, v in data.items()
+            }
+        )
+    elif test_type(data):
+        return func(data, *args, **kwargs)
+    elif error_on_other_type:
+        raise TypeError(
+            f"Unsupported types ({type(data)}) passed to `{func.__name__}`. Only nested list/tuple/dicts of "
+            f"objects that are valid for `{test_type.__name__}` should be passed."
+        )
+    return data
+
+def get_data_structure(data):
+    """
+    Recursively gathers the information needed to rebuild a nested list/tuple/dictionary of tensors.
+
+    Args:
+        data (nested list/tuple/dictionary of `torch.Tensor`):
+            The data to send to analyze.
+
+    Returns:
+        The same data structure as `data` with [`~utils.TensorInformation`] instead of tensors.
+    """
+
+    def _get_data_structure(tensor):
+        return TensorInformation(shape=tensor.shape, dtype=tensor.dtype)
+
+    return recursively_apply(_get_data_structure, data)
+
+def is_namedtuple(data):
+    """
+    Checks if `x` is a `namedtuple` or not. Can have false positives, but only if a user is trying to mimic a
+    `namedtuple` perfectly.
+    """
+    data_type = type(data)
+    bases = data_type.__bases__
+    if len(bases) != 1 or bases[0] != tuple:
+        return False
+    fields = getattr(data_type, "_fields", None)
+    if not isinstance(fields, tuple):
+        return False
+    return all(isinstance(member, str) for member in fields)
+
+
+def honor_type(obj, generator):
+    """
+    Cast a generator to the same type as obj (list, tuple, or namedtuple)
+    """
+    # Some objects may not be able to instantiate from a generator directly
+    if is_namedtuple(obj):
+        return type(obj)(*list(generator))
+    else:
+        return type(obj)(generator)
+    
+def concatenate(data, dim=0):
+    """
+    Recursively concatenate the tensors in a nested list/tuple/dictionary of lists of tensors with the same shape.
+
+    Args:
+        data (nested list/tuple/dictionary of lists of tensors `torch.Tensor`):
+            The data to concatenate.
+        dim (`int`, *optional*, defaults to 0):
+            The dimension on which to concatenate.
+
+    Returns:
+        The same data structure as `data` with all the tensors concatenated.
+    """
+    if isinstance(data[0], (tuple, list)):
+        return honor_type(data[0], (concatenate([d[i] for d in data], dim=dim) for i in range(len(data[0]))))
+    elif isinstance(data[0], Mapping):
+        return type(data[0])({k: concatenate([d[k] for d in data], dim=dim) for k in data[0].keys()})
+    elif not isinstance(data[0], torch.Tensor):
+        raise TypeError(f"Can only concatenate tensors but got {type(data[0])}")
+    return torch.cat(data, dim=dim)
 
 def broadcast_object_list(object_list, from_process: int = 0):
     """
@@ -28,6 +237,19 @@ def broadcast_object_list(object_list, from_process: int = 0):
     """
     torch.distributed.broadcast_object_list(object_list, src=from_process)
     return object_list
+
+def initialize_tensors(data_structure):
+    """
+    Recursively initializes tensors from a nested list/tuple/dictionary of [`~utils.TensorInformation`].
+
+    Returns:
+        The same data structure as `data` with tensors instead of [`~utils.TensorInformation`].
+    """
+
+    def _initialize_tensor(tensor_info):
+        return torch.empty(*tensor_info.shape, dtype=tensor_info.dtype)
+
+    return recursively_apply(_initialize_tensor, data_structure, test_type=is_tensor_information)
 
 
 class ConstantLengthDataset(IterableDataset):
