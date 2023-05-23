@@ -270,23 +270,17 @@ if args.resume_from_checkpoint:
 
 # Train model
 model.train()
-print(f'On process: {accelerator.process_index}')
 accelerator.wait_for_everyone()
 completed_steps = 0
 t_start = time.time()
 loss_tracking = 0
-logger.info(f'Started training...')
 for step, batch in enumerate(train_dataloader, start=1):
-    logger.info(f"On batch {step}")
     with accelerator.accumulate(model):
         if args.resume_from_checkpoint and step < resume_step:
             continue  # we need to skip steps until we reach the resumed step
         lr = get_lr()
-        logger.info(f"Got lr: {lr}")
         loss = model(batch, labels=batch, use_cache=False).loss
-        logger.info(f"Got loss: {loss}")
         avg_loss = accelerator.gather(loss.repeat(args.train_batch_size)).mean()
-        logger.info(f"Gathered loss: {avg_loss}")
         loss_tracking += avg_loss.item() / args.gradient_accumulation_steps
         log_metrics(step, {"samples": step * samples_per_step, "loss_per_step/train": loss.item()})
         accelerator.clip_grad_norm_(model.parameters(), 1.0)
