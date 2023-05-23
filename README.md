@@ -7,52 +7,29 @@
 3. `huggingface-hub login`, and pass in your [Hugging Face API token](http://hf.co/settings/token)
 4. `wandb login` to track with wandb
 5. `mkdir model` to create a model directory. **Note: Should be done one directory outside this directory**
-6. `accelerate launch --config_file h100-stuff/fp8.yml h100-stuff/codeparrot/scripts/codeparrot_training.py --train_batch_size 32 --eval_batch_size 32 --max_train_steps 100 --save_dir model/`
+6. `accelerate launch --config_file h100-stuff/fp8.yml h1000-stuff/run_summarization_no_trainer.py --model_name_or_path t5-11b --dataset_name cnn_dailymail --dataset_config "3.0.0" --source_prefix "summarize: " --output_dir tst-summarization --per_device_train_batch_size=4 --per_device_eval_batch_size=4  --with_tracking --report_to "wandb" --max_train_steps 100`
 
-## To run a variety of setups:
-
-### fp8 or bf16 single node
-
-Big model: 
-
-```bash
-accelerate launch --config_file h100-stuff/fp8.yml h100-stuff/codeparrot/scripts/codeparrot_training.py --train_batch_size 32 --eval_batch_size 32 --max_train_steps 100 --save_dir model/
-```
-
-```bash
-accelerate launch --config_file h100-stuff/bf16.yml h100-stuff/codeparrot/scripts/codeparrot_training.py --train_batch_size 32 --eval_batch_size 32 --max_train_steps 100 --save_dir model/
-```
-
-Small model:
-
-```bash
-accelerate launch --config_file h100-stuff/bf16.yml h100-stuff/codeparrot/scripts/codeparrot_training.py --max_train_steps 100 --save_dir model/ --model_ckpt codeparrot/codeparrot-small --train_batch_size 64 --valid_batch_size 64
-```
-
-```bash
-accelerate launch --config_file h100-stuff/fp8.yml h100-stuff/codeparrot/scripts/codeparrot_training.py --max_train_steps 100 --save_dir model/ --model_ckpt codeparrot/codeparrot-small --train_batch_size 64 --valid_batch_size 64
-```
 
 ## fp8 or bf16 on multi-node
 
-### Note: Currently has issues ###
-
 Change each yml to be (maintaining the `mixed_precision` already stored there):
+
+And pass it to `accelerate launch` under the `--config_file` param
 
 ```diff
 compute_environment: LOCAL_MACHINE
 deepspeed_config: {}
--distributed_type: 'NO'
-+distributed_type: 'MULTI_GPU'
+distributed_type: 'MULTI_GPU'
 downcast_bf16: 'no'
 fsdp_config: {}
 machine_rank: 0
 main_process_ip: null
 main_process_port: null
 main_training_function: main
-mixed_precision: 'bf16'
+-mixed_precision: 'bf16'
++mixed_precision: 'fp8'
 num_machines: 1
--num_processes: 1
-+num_processes: 8
+num_processes: 1
+num_processes: 8
 use_cpu: false
 ```
