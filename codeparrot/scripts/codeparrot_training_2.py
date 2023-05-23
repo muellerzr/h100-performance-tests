@@ -18,6 +18,14 @@ from torch.utils.data.datapipes.iter.combinatorics import ShufflerIterDataPipe
 import transformers
 from transformers import AutoModelForCausalLM, AutoTokenizer, HfArgumentParser, get_scheduler, set_seed
 
+class SuperDataset(IterableDataset):
+    def __init__(self, dataset):
+        self.dataset = dataset
+    def __iter__(self):
+        return iter(self.dataset)
+    def shuffle(self, buffer_size=1000):
+        self.dataset.shuffle(buffer_size)
+
 
 class ConstantLengthDataset(IterableDataset):
     """
@@ -125,14 +133,14 @@ def create_dataloaders(args):
     train_data = load_dataset(args.dataset_name_train, split="train", **ds_kwargs)
     train_data = train_data.shuffle(buffer_size=args.shuffle_buffer, seed=args.seed)
     valid_data = load_dataset(args.dataset_name_valid, split="train", **ds_kwargs)
-    train_dataset = ConstantLengthDataset(
+    train_dataset = SuperDataset(ConstantLengthDataset(
         tokenizer, train_data, infinite=True, seq_length=args.seq_length, tokenized=args.tokenized
-    )
-    valid_dataset = ConstantLengthDataset(
+    ))
+    valid_dataset = SuperDataset(ConstantLengthDataset(
         tokenizer, valid_data, infinite=False, seq_length=args.seq_length, tokenized=args.tokenized
-    )
+    ))
     train_dataset = train_dataset.shuffle(buffer_size=args.shuffle_buffer)
-    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
     eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
     return train_dataloader, eval_dataloader
 
