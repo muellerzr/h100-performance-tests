@@ -7,7 +7,7 @@
 3. `huggingface-hub login`, and pass in your [Hugging Face API token](http://hf.co/settings/token)
 4. `wandb login` to track with wandb
 5. `mkdir model` to create a model directory. **Note: Should be done one directory outside this directory**
-6. `accelerate launch --config_file h100-stuff/fp8.yml h1000-stuff/run_summarization_no_trainer.py --model_name_or_path t5-11b --dataset_name cnn_dailymail --dataset_config "3.0.0" --source_prefix "summarize: " --output_dir tst-summarization --per_device_train_batch_size=4 --per_device_eval_batch_size=4  --with_tracking --report_to "wandb" --max_train_steps 100`
+6. `accelerate launch --config_file h100-stuff/fp8.yml h1000-stuff/run_summarization_no_trainer.py --model_name_or_path t5-big --dataset_name cnn_dailymail --dataset_config "3.0.0" --source_prefix "summarize: " --output_dir tst-summarization --per_device_train_batch_size=4 --per_device_eval_batch_size=4  --with_tracking --report_to "wandb" --max_train_steps 100`
 
 
 ## fp8 or bf16 on multi-node
