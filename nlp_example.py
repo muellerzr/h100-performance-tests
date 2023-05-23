@@ -113,7 +113,9 @@ def get_dataloaders(accelerator: Accelerator, batch_size: int = 16):
 
 def training_function(config, args):
     # Initialize accelerator
-    accelerator = Accelerator(cpu=args.cpu, mixed_precision=args.mixed_precision, dispatch_batches=False)
+    from accelerate.utils import DistributedDataParallelKwargs
+    kwargs = [DistributedDataParallelKwargs(find_unused_parameters=True)]
+    accelerator = Accelerator(cpu=args.cpu, mixed_precision=args.mixed_precision, dispatch_batches=False, kwargs_handlers=kwargs)
     # Sample hyper-parameters for learning rate, batch size, seed and a few other HPs
     lr = config["lr"]
     num_epochs = int(config["num_epochs"])
