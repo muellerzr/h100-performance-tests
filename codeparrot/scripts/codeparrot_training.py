@@ -197,7 +197,7 @@ parser = HfArgumentParser(TrainingArguments)
 args = parser.parse_args()
 
 # Accelerator
-accelerator = Accelerator(log_with=["wandb", "tensorboard"], logging_dir=f"{args.save_dir}/log", dispatch_batches=False)
+accelerator = Accelerator(log_with=["wandb"], dispatch_batches=False)
 acc_state = {str(k): str(v) for k, v in accelerator.state.__dict__.items()}
 
 args = Namespace(**vars(args), **acc_state)
@@ -217,10 +217,10 @@ if accelerator.is_main_process:
     hf_repo.git_checkout(run_name, create_branch_ok=True)
 
 # Load model and tokenizer
-model = AutoModelForCausalLM.from_pretrained(args.save_dir)
+model = AutoModelForCausalLM.from_pretrained(args.model_ckpt)
 if args.gradient_checkpointing:
     model.gradient_checkpointing_enable()
-tokenizer = AutoTokenizer.from_pretrained(args.save_dir)
+tokenizer = AutoTokenizer.from_pretrained(args.model_ckpt)
 
 print(f'Creating dataset')
 # Load dataset and dataloader
