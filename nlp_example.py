@@ -110,10 +110,26 @@ def get_dataloaders(accelerator: Accelerator, batch_size: int = 16):
 
     return train_dataloader, eval_dataloader
 
+def compute_tflops(elapsed_time, accelerator, args):
+    # TFLOPs formula (from Equation 3 in Section 5.1 of https://arxiv.org/pdf/2104.04473.pdf).
+    config_model = accelerator.unwrap_model(model).config
+    checkpoint_factor = 4 if args.gradient_checkpointing else 3
+    batch_size = args.train_batch_size * accelerator.state.num_processes * args.gradient_accumulation_steps
+    factor = 24 * checkpoint_factor * batch_size * args.seq_length * config_model.n_layer * (config_model.n_embd**2)
+    flops_per_iteration = factor * (
+        1.0
+        + (args.seq_length / (6.0 * config_model.n_embd))
+        + (tokenizer.vocab_size / (16.0 * config_model.n_layer * config_model.n_embd))
+    )
+    tflops = flops_per_iteration / (elapsed_time * accelerator.state.num_processes * (10**12))
+    return tflops
+
 
 def training_function(config, args):
     # Initialize accelerator
-    accelerator = Accelerator(cpu=args.cpu, mixed_precision=args.mixed_precision)
+    from accelerate.utils import DistributedDataParallelKwargs
+    kwargs = [DistributedDataParallelKwargs(find_unused_parameters=True)]
+    accelerator = Accelerator(cpu=args.cpu, mixed_precision=args.mixed_precision, kwargs_handlers=kwargs)
     # Sample hyper-parameters for learning rate, batch size, seed and a few other HPs
     lr = config["lr"]
     num_epochs = int(config["num_epochs"])
