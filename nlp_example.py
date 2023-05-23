@@ -56,7 +56,7 @@ def get_dataloaders(accelerator: Accelerator, batch_size: int = 16):
         batch_size (`int`, *optional*):
             The batch size for the train and validation DataLoaders.
     """
-    tokenizer = AutoTokenizer.from_pretrained("roberta-large-mnli")
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
     datasets = load_dataset("glue", "mrpc")
 
     def tokenize_function(examples):
@@ -110,26 +110,10 @@ def get_dataloaders(accelerator: Accelerator, batch_size: int = 16):
 
     return train_dataloader, eval_dataloader
 
-def compute_tflops(elapsed_time, accelerator, args, model, tokenizer):
-    # TFLOPs formula (from Equation 3 in Section 5.1 of https://arxiv.org/pdf/2104.04473.pdf).
-    config_model = accelerator.unwrap_model(model).config
-    checkpoint_factor = 4 if args.gradient_checkpointing else 3
-    batch_size = args.train_batch_size * accelerator.state.num_processes * args.gradient_accumulation_steps
-    factor = 24 * checkpoint_factor * batch_size * args.seq_length * config_model.n_layer * (config_model.n_embd**2)
-    flops_per_iteration = factor * (
-        1.0
-        + (args.seq_length / (6.0 * config_model.n_embd))
-        + (tokenizer.vocab_size / (16.0 * config_model.n_layer * config_model.n_embd))
-    )
-    tflops = flops_per_iteration / (elapsed_time * accelerator.state.num_processes * (10**12))
-    return tflops
-
 
 def training_function(config, args):
     # Initialize accelerator
-    from accelerate.utils import DistributedDataParallelKwargs
-    kwargs = [DistributedDataParallelKwargs(find_unused_parameters=True)]
-    accelerator = Accelerator(cpu=args.cpu, mixed_precision=args.mixed_precision, kwargs_handlers=kwargs)
+    accelerator = Accelerator(cpu=args.cpu, mixed_precision=args.mixed_precision)
     # Sample hyper-parameters for learning rate, batch size, seed and a few other HPs
     lr = config["lr"]
     num_epochs = int(config["num_epochs"])
@@ -144,7 +128,7 @@ def training_function(config, args):
     set_seed(seed)
     train_dataloader, eval_dataloader = get_dataloaders(accelerator, batch_size)
     # Instantiate the model (we build the model here so that the seed also control new weights initialization)
-    model = AutoModelForSequenceClassification.from_pretrained("roberta-large-mnli", return_dict=True)
+    model = AutoModelForSequenceClassification.from_pretrained("bert-base-cased", return_dict=True)
 
     # We could avoid this line since the accelerator is set with `device_placement=True` (default value).
     # Note that if you are placing tensors on devices manually, this line absolutely needs to be before the optimizer
@@ -199,7 +183,7 @@ def training_function(config, args):
                 references=references,
             )
 
-        eval_metric = metric.compute(average="weighted")
+        eval_metric = metric.compute()
         # Use accelerator.print to print only on the main process.
         accelerator.print(f"epoch {epoch}:", eval_metric)
     accelerator.print(f'Mixed Precision: {accelerator.state.mixed_precision}\nAverage time per batch: {sum(times)/len(times)}')
