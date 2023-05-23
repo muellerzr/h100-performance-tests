@@ -22,7 +22,7 @@ from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, get_linear_schedule_with_warmup, set_seed
 
 from accelerate import Accelerator, DistributedType
-import time
+
 
 ########################################################################
 # This is a fully working simple example to use Accelerate
@@ -113,9 +113,7 @@ def get_dataloaders(accelerator: Accelerator, batch_size: int = 16):
 
 def training_function(config, args):
     # Initialize accelerator
-    from accelerate.utils import DistributedDataParallelKwargs
-    kwargs = [DistributedDataParallelKwargs(find_unused_parameters=True)]
-    accelerator = Accelerator(cpu=args.cpu, mixed_precision=args.mixed_precision, dispatch_batches=False, kwargs_handlers=kwargs)
+    accelerator = Accelerator(cpu=args.cpu, mixed_precision=args.mixed_precision)
     # Sample hyper-parameters for learning rate, batch size, seed and a few other HPs
     lr = config["lr"]
     num_epochs = int(config["num_epochs"])
@@ -126,6 +124,9 @@ def training_function(config, args):
 
     # If the batch size is too big we use gradient accumulation
     gradient_accumulation_steps = 1
+    if batch_size > MAX_GPU_BATCH_SIZE and accelerator.distributed_type != DistributedType.TPU:
+        gradient_accumulation_steps = batch_size // MAX_GPU_BATCH_SIZE
+        batch_size = MAX_GPU_BATCH_SIZE
 
     set_seed(seed)
     train_dataloader, eval_dataloader = get_dataloaders(accelerator, batch_size)
@@ -155,11 +156,9 @@ def training_function(config, args):
     )
 
     # Now we train the model
-    times = []
     for epoch in range(num_epochs):
         model.train()
         for step, batch in enumerate(train_dataloader):
-            start_time = time.time()
             # We could avoid this line since we set the accelerator with `device_placement=True`.
             batch.to(accelerator.device)
             outputs = model(**batch)
@@ -170,7 +169,6 @@ def training_function(config, args):
                 optimizer.step()
                 lr_scheduler.step()
                 optimizer.zero_grad()
-                times.append(time.time() - start_time)
 
         model.eval()
         for step, batch in enumerate(eval_dataloader):
@@ -188,7 +186,7 @@ def training_function(config, args):
         eval_metric = metric.compute()
         # Use accelerator.print to print only on the main process.
         accelerator.print(f"epoch {epoch}:", eval_metric)
-    accelerator.print(f'Mixed Precision: {accelerator.state.mixed_precision}\nAverage time per batch: {sum(times)/len(times)}')
+
 
 def main():
     parser = argparse.ArgumentParser(description="Simple example of training script.")
@@ -203,7 +201,7 @@ def main():
     )
     parser.add_argument("--cpu", action="store_true", help="If passed, will train on the CPU.")
     args = parser.parse_args()
-    config = {"lr": 2e-5, "num_epochs": 3, "seed": 42, "batch_size": 128}
+    config = {"lr": 2e-5, "num_epochs": 3, "seed": 42, "batch_size": 16}
     training_function(config, args)
 
 
