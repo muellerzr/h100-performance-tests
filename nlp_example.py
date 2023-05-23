@@ -110,7 +110,7 @@ def get_dataloaders(accelerator: Accelerator, batch_size: int = 16):
 
     return train_dataloader, eval_dataloader
 
-def compute_tflops(elapsed_time, accelerator, args):
+def compute_tflops(elapsed_time, accelerator, args, model, tokenizer):
     # TFLOPs formula (from Equation 3 in Section 5.1 of https://arxiv.org/pdf/2104.04473.pdf).
     config_model = accelerator.unwrap_model(model).config
     checkpoint_factor = 4 if args.gradient_checkpointing else 3
@@ -199,7 +199,7 @@ def training_function(config, args):
                 references=references,
             )
 
-        eval_metric = metric.compute()
+        eval_metric = metric.compute(average="weighted")
         # Use accelerator.print to print only on the main process.
         accelerator.print(f"epoch {epoch}:", eval_metric)
     accelerator.print(f'Mixed Precision: {accelerator.state.mixed_precision}\nAverage time per batch: {sum(times)/len(times)}')
