@@ -664,99 +664,11 @@ def main():
             accelerator.log({"batch_time": total_time})
             start_time = end_time
 
-            if isinstance(checkpointing_steps, int):
-                if completed_steps % checkpointing_steps == 0:
-                    output_dir = f"step_{completed_steps }"
-                    if args.output_dir is not None:
-                        output_dir = os.path.join(args.output_dir, output_dir)
-                    accelerator.save_state(output_dir)
-
             if completed_steps >= args.max_train_steps:
                 break
 
-        model.eval()
+    accelerator.end_training()
 
-        gen_kwargs = {
-            "max_length": args.val_max_target_length,
-            "num_beams": args.num_beams,
-        }
-        for step, batch in enumerate(eval_dataloader):
-            with torch.no_grad():
-                generated_tokens = accelerator.unwrap_model(model).generate(
-                    batch["input_ids"],
-                    attention_mask=batch["attention_mask"],
-                    **gen_kwargs,
-                )
-
-                generated_tokens = accelerator.pad_across_processes(
-                    generated_tokens, dim=1, pad_index=tokenizer.pad_token_id
-                )
-                labels = batch["labels"]
-                if not args.pad_to_max_length:
-                    # If we did not pad to max length, we need to pad the labels too
-                    labels = accelerator.pad_across_processes(batch["labels"], dim=1, pad_index=tokenizer.pad_token_id)
-
-                generated_tokens, labels = accelerator.gather_for_metrics((generated_tokens, labels))
-                generated_tokens = generated_tokens.cpu().numpy()
-                labels = labels.cpu().numpy()
-
-                if args.ignore_pad_token_for_loss:
-                    # Replace -100 in the labels as we can't decode them.
-                    labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
-                if isinstance(generated_tokens, tuple):
-                    generated_tokens = generated_tokens[0]
-                decoded_preds = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-                decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
-
-                decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
-                metric.add_batch(
-                    predictions=decoded_preds,
-                    references=decoded_labels,
-                )
-        result = metric.compute(use_stemmer=True)
-        result = {k: round(v * 100, 4) for k, v in result.items()}
-
-        logger.info(result)
-
-        if args.with_tracking:
-            result["train_loss"] = total_loss.item() / len(train_dataloader)
-            result["epoch"] = epoch
-            result["step"] = completed_steps
-            accelerator.log(result, step=completed_steps)
-
-        if args.push_to_hub and epoch < args.num_train_epochs - 1:
-            accelerator.wait_for_everyone()
-            unwrapped_model = accelerator.unwrap_model(model)
-            unwrapped_model.save_pretrained(
-                args.output_dir, is_main_process=accelerator.is_main_process, save_function=accelerator.save
-            )
-            if accelerator.is_main_process:
-                tokenizer.save_pretrained(args.output_dir)
-                repo.push_to_hub(
-                    commit_message=f"Training in progress epoch {epoch}", blocking=False, auto_lfs_prune=True
-                )
-
-        if args.checkpointing_steps == "epoch":
-            output_dir = f"epoch_{epoch}"
-            if args.output_dir is not None:
-                output_dir = os.path.join(args.output_dir, output_dir)
-            accelerator.save_state(output_dir)
-
-    if args.output_dir is not None:
-        accelerator.wait_for_everyone()
-        unwrapped_model = accelerator.unwrap_model(model)
-        unwrapped_model.save_pretrained(
-            args.output_dir, is_main_process=accelerator.is_main_process, save_function=accelerator.save
-        )
-        if accelerator.is_main_process:
-            tokenizer.save_pretrained(args.output_dir)
-            if args.push_to_hub:
-                repo.push_to_hub(commit_message="End of training", auto_lfs_prune=True)
-
-            all_results = {f"eval_{k}": v for k, v in result.items()}
-            with open(os.path.join(args.output_dir, "all_results.json"), "w") as f:
-                json.dump(all_results, f)
-
-
+        
 if __name__ == "__main__":
     main()
