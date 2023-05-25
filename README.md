@@ -1,13 +1,24 @@
 # h100 testing scripts
 
+This repository tested the T-FLOPS on an 8xH100 node, gratiously provided by CoreWeave. 
+
 ## To run:
 
 1. Clone this repository
 2. Install requirements `pip install -r h100-stuff/requirements.txt` (and ensure you have `git-lfs` installed. [See here for directions](https://askubuntu.com/questions/799341/how-to-install-git-lfs-on-ubuntu-16-04))
-3. `huggingface-hub login`, and pass in your [Hugging Face API token](http://hf.co/settings/token)
-4. `wandb login` to track with wandb
-5. `mkdir model` to create a model directory. **Note: Should be done one directory outside this directory**
-6. `accelerate launch --config_file h100-stuff/fp8.yml h1000-stuff/run_summarization_no_trainer.py --model_name_or_path t5-large --dataset_name cnn_dailymail --dataset_config "3.0.0" --source_prefix "summarize: " --output_dir tst-summarization --per_device_train_batch_size=4 --per_device_eval_batch_size=4  --with_tracking --report_to "wandb" --max_train_steps 100`
+3. `wandb login` to track with wandb
+4. `accelerate launch --config_file h100-stuff/fp8.yml h100-stuff/run_summarization_no_trainer.py --model_name_or_path t5-large --dataset_name cnn_dailymail --dataset_config "3.0.0" --source_prefix "summarize: " --output_dir tst-summarization --per_device_train_batch_size=4 --per_device_eval_batch_size=4  --with_tracking --report_to "wandb" --max_train_steps 100`
+
+## Report
+
+For the full Weights and Biases log, please check out the workspace [here](https://wandb.ai/muellerzr/summarization_no_trainer?workspace=user-muellerzr).
+
+Overall we saw a 25% increase in terms of FLOPS comparing bf16 to fp8 on the H100's. Below are two graphs comparing the T-FLOPS at different batch sizes, one at 8 per GPU (64 actual) and the other at 4 per GPU (32 actual). The model utilized was the "T5-Large" varient of the T5 models, so as to use a large model to properly test the capabilities of the cluster.
+
+![The graph for batch size of 64, for 100 steps](100_steps_bs_8.png)
+![The graph for batch size of 32, for 500 steps](500_steps_bs_4.png)
+
+> Footnote: The numbers reported also show an issue somewhere on the architecture or code that potentially wasn't allowing for the full TFLOPS performance gain. There was a negligble difference between training on BF16 and full precision on the node, leading to this conclusion. (Review the W&B logs to see this).
 
 
 ## fp8 or bf16 on multi-node

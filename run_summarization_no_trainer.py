@@ -19,7 +19,6 @@ Fine-tuning a 🤗 Transformers model on summarization.
 # You can also adapt this script on your own summarization task. Pointers for this are left as comments.
 
 import argparse
-import json
 import logging
 import math
 import os
@@ -27,9 +26,7 @@ import random
 from pathlib import Path
 
 import datasets
-import evaluate
 import nltk
-import numpy as np
 import torch
 from accelerate import Accelerator
 from accelerate.logging import get_logger
@@ -51,7 +48,7 @@ from transformers import (
     SchedulerType,
     get_scheduler,
 )
-from transformers.utils import check_min_version, get_full_repo_name, is_offline_mode, send_example_telemetry
+from transformers.utils import get_full_repo_name, is_offline_mode, send_example_telemetry
 from transformers.utils.versions import require_version
 
 
@@ -495,17 +492,6 @@ def main():
             desc="Running tokenizer on dataset",
         )
 
-        # Temporarily set max_target_length for validation.
-        max_target_length = args.val_max_target_length
-        eval_dataset = raw_datasets["validation"].map(
-            preprocess_function,
-            batched=True,
-            num_proc=args.preprocessing_num_workers,
-            remove_columns=column_names,
-            load_from_cache_file=not args.overwrite_cache,
-            desc="Running tokenizer on dataset",
-        )
-
     # Log a few random samples from the training set:
     for index in random.sample(range(len(train_dataset)), 1):
         logger.info(f"Sample {index} of the training set: {train_dataset[index]}.")
@@ -518,20 +504,9 @@ def main():
         pad_to_multiple_of=8 if accelerator.use_fp16 else None,
     )
 
-    def postprocess_text(preds, labels):
-        preds = [pred.strip() for pred in preds]
-        labels = [label.strip() for label in labels]
-
-        # rougeLSum expects newline after each sentence
-        preds = ["\n".join(nltk.sent_tokenize(pred)) for pred in preds]
-        labels = ["\n".join(nltk.sent_tokenize(label)) for label in labels]
-
-        return preds, labels
-
     train_dataloader = DataLoader(
         train_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size
     )
-    eval_dataloader = DataLoader(eval_dataset, collate_fn=data_collator, batch_size=args.per_device_eval_batch_size)
 
     # Optimizer
     # Split weights in two groups, one with weight decay and the other not.
@@ -563,8 +538,8 @@ def main():
     )
 
     # Prepare everything with our `accelerator`.
-    model, optimizer, train_dataloader, eval_dataloader, lr_scheduler = accelerator.prepare(
-        model, optimizer, train_dataloader, eval_dataloader, lr_scheduler
+    model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
+        model, optimizer, train_dataloader, lr_scheduler
     )
 
     # We need to recalculate our total training steps as the size of the training dataloader may have changed.
@@ -586,9 +561,6 @@ def main():
         # TensorBoard cannot log Enums, need the raw value
         experiment_config["lr_scheduler_type"] = experiment_config["lr_scheduler_type"].value
         accelerator.init_trackers("summarization_no_trainer", experiment_config)
-
-    # Metric
-    metric = evaluate.load("rouge")
 
     # Train!
     total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
@@ -633,41 +605,33 @@ def main():
     import time
     start_time = time.time()
 
-    for epoch in range(starting_epoch, args.num_train_epochs):
-        model.train()
-        if args.with_tracking:
-            total_loss = 0
-        if args.resume_from_checkpoint and epoch == starting_epoch and resume_step is not None:
-            # We skip the first `n` batches in the dataloader when resuming from a checkpoint
-            active_dataloader = accelerator.skip_first_batches(train_dataloader, resume_step)
-        else:
-            active_dataloader = train_dataloader
-        for step, batch in enumerate(active_dataloader):
-            with accelerator.accumulate(model):
-                outputs = model(**batch)
-                loss = outputs.loss
-                # We keep track of the loss at each epoch
-                if args.with_tracking:
-                    total_loss += loss.detach().float()
-                accelerator.backward(loss)
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()
+    model.train()
+    if args.with_tracking:
+        total_loss = 0
+    for step, batch in enumerate(train_dataloader):
+        with accelerator.accumulate(model):
+            outputs = model(**batch)
+            loss = outputs.loss
+            # We keep track of the loss at each epoch
+            if args.with_tracking:
+                total_loss += loss.detach().float()
+            accelerator.backward(loss)
+            optimizer.step()
+            lr_scheduler.step()
+            optimizer.zero_grad()
 
-            # Checks if the accelerator has performed an optimization step behind the scenes
-            if accelerator.sync_gradients:
-                progress_bar.update(1)
-                completed_steps += 1
+        # Checks if the accelerator has performed an optimization step behind the scenes
+        if accelerator.sync_gradients:
+            progress_bar.update(1)
+            completed_steps += 1
 
-            end_time = time.time()
-            total_time = end_time - start_time
-            accelerator.log({"batch_time": total_time})
-            start_time = end_time
+        end_time = time.time()
+        total_time = end_time - start_time
+        accelerator.log({"batch_time": total_time})
+        start_time = end_time
 
-            if completed_steps >= args.max_train_steps:
-                break
-
-    accelerator.end_training()
+        if completed_steps >= args.max_train_steps:
+            break
 
         
 if __name__ == "__main__":
