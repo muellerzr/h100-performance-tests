@@ -15,6 +15,8 @@ For the full Weights and Biases log, please check out the workspace [here](https
 
 Overall we saw a 25% increase in terms of FLOPS comparing bf16 to fp8 on the H100's. Below are two graphs comparing the T-FLOPS at different batch sizes, one at 8 per GPU (64 actual) and the other at 4 per GPU (32 actual). The model utilized was the "T5-Large" varient of the T5 models, so as to use a large model to properly test the capabilities of the cluster.
 
+To see how T-FLOPS were calculated, please see [the notebook here](Calculating_T_FLOPs.ipynb). Note that you need to download the chart data for "batch_time" from the Weights and Biases logs, grouped by the "xxx-steps-bs-y" key.
+
 ![The graph for batch size of 64, for 100 steps](100_steps_bs_8.png)
 ![The graph for batch size of 32, for 500 steps](500_steps_bs_4.png)
 
