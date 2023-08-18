@@ -107,7 +107,7 @@ accelerator.init_trackers("fp8-benchmarks", config={
     "accelerator_state": accelerator.state,
     "mixed_precision": accelerator.mixed_precision,
 },
-init_kwargs={"wandb": {"name": f'{accelerator.mixed_precision}_bs_{batch_size}'}})
+init_kwargs={"wandb": {"name": f'{accelerator.mixed_precision}_bs_{batch_size}_{accelerator.num_processes}_gpus'}})
 
 model.train()
 completed_steps = 0
