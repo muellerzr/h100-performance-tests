@@ -41,11 +41,30 @@ def get_dataloaders(accelerator:Accelerator, batch_size:int = 8):
     if getattr(tokenizer, "pad_token", None) is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    def tokenize(element):
+        outputs = tokenizer(
+            element["text"],
+            truncation=True,
+            padding=False,
+            max_length=max_seq_length,
+            return_overflowing_tokens=False,
+            return_length=False
+        )
+        return {"input_ids": outputs["input_ids"], "attention_mask": outputs["attention_mask"]}
+    
+    with accelerator.main_process_first():
+        dataset = dataset.map(
+            tokenize,
+            batched=True,
+            remove_columns=dataset.column_names
+        )
+
     pad_to_multiple_of = None
     if accelerator.mixed_precision == "fp8":
         pad_to_multiple_of = 16
     elif accelerator.mixed_precision != "no":
         pad_to_multiple_of = 8
+
 
     data_collator = DataCollatorForLanguageModeling(
         tokenizer=tokenizer,
