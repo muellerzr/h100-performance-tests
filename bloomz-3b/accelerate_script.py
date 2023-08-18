@@ -132,7 +132,7 @@ for _ in range(100):
         
         end_time = time.time()
         total_time = end_time - start_time 
-        accelerator.log({"batch_time": total_time, "input": batch})
+        accelerator.log({"batch_time": total_time, "input_ids": batch["input_ids"].cpu().numpy(), "attention_mask": batch["attention_mask"].cpu().numpy()})
         start_time = end_time
 
         if completed_steps >= num_training_steps:
