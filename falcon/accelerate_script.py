@@ -17,21 +17,14 @@ dataset_text_field = "text"
 learning_rate = 1.41e-5
 batch_size = 8
 max_seq_length = 512
-gradient_accumulation_steps = 16
+gradient_accumulation_steps = 1
 peft_lora_r = 64
 peft_lora_alpha = 16
 num_training_steps=500
 
 
-# quantization_config = BitsAndBytesConfig(
-#     load_in_8bit=True
-# )
-
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
-    # quantization_config=quantization_config,
-    # device_map = {"":0},
-    # torch_dtype = torch.bfloat16
 )
 
 
@@ -81,6 +74,7 @@ def get_dataloaders(accelerator:Accelerator, batch_size:int = 8):
     return train_dataloader
 
 accelerator = Accelerator(log_with="wandb", gradient_accumulation_steps=gradient_accumulation_steps)
+accelerator.print(f'State: {accelerator.state}')
 train_dataloader = get_dataloaders(accelerator, batch_size)
 
 optimizer = AdamW(params = model.parameters(), lr=learning_rate)
@@ -95,7 +89,12 @@ model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
     model, optimizer, train_dataloader, lr_scheduler
 )
 
-accelerator.init_trackers("falcon")
+accelerator.init_trackers("falcon", config={
+    "model_name": model_name,
+    "dataset_name": dataset_name,
+    "batch_size": batch_size,
+    "accelerator_state": dict(accelerator.state)
+})
 
 model.train()
 completed_steps = 0
