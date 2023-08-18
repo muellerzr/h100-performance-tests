@@ -6,21 +6,20 @@ from datasets import load_dataset
 from peft import LoraConfig, get_peft_model
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
-# from peft import LoraConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer, get_linear_schedule_with_warmup
 from transformers import DataCollatorForLanguageModeling
 import time
 
-model_name = "tiiuae/falcon-7b"
+model_name = "bigscience/bloomz-3b"
 dataset_name = "timdettmers/openassistant-guanaco"
 dataset_text_field = "text"
 learning_rate = 1.41e-5
-batch_size = 4
+batch_size = 16
 max_seq_length = 256
-gradient_accumulation_steps = 2
+gradient_accumulation_steps = 1
 peft_lora_r = 64
 peft_lora_alpha = 16
-num_training_steps=500
+num_training_steps=200
 
 peft_config = LoraConfig(
     r=peft_lora_r,
@@ -37,7 +36,7 @@ model = AutoModelForCausalLM.from_pretrained(
     torch_dtype=torch.bfloat16,
 )
 
-model = get_peft_model(model, peft_config)
+#model = get_peft_model(model, peft_config)
 
 
 def get_dataloaders(accelerator:Accelerator, batch_size:int = 8):
@@ -101,7 +100,7 @@ model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
     model, optimizer, train_dataloader, lr_scheduler
 )
 
-accelerator.init_trackers("falcon", config={
+accelerator.init_trackers("fp8-benchmarks", config={
     "model_name": model_name,
     "dataset_name": dataset_name,
     "batch_size": batch_size,

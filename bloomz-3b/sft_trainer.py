@@ -119,6 +119,7 @@ if script_args.use_peft:
         lora_alpha=script_args.peft_lora_alpha,
         bias="none",
         task_type="CAUSAL_LM",
+        target_modules=["query_key_value"],
     )
 else:
     peft_config = None
