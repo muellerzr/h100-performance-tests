@@ -23,15 +23,15 @@ peft_lora_alpha = 16
 num_training_steps=500
 
 
-quantization_config = BitsAndBytesConfig(
-    load_in_8bit=True
-)
+# quantization_config = BitsAndBytesConfig(
+#     load_in_8bit=True
+# )
 
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
-    quantization_config=quantization_config,
-    device_map = {"":0},
-    torch_dtype = torch.bfloat16
+    # quantization_config=quantization_config,
+    # device_map = {"":0},
+    # torch_dtype = torch.bfloat16
 )
 
 
