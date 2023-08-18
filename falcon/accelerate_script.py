@@ -101,26 +101,30 @@ model.train()
 completed_steps = 0
 total_loss = 0
 start_time = time.time()
-for step, batch in enumerate(train_dataloader):
-    with accelerator.accumulate(model):
-        outputs = model(**batch)
-        loss = outputs.loss
-        total_loss += loss.detach().float()
-        accelerator.backward(loss)
-        optimizer.step()
-        lr_scheduler.step()
-        optimizer.zero_grad()
-
-    if accelerator.sync_gradients:
-        completed_steps += 1
-    
-    end_time = time.time()
-    total_time = end_time - start_time 
-    accelerator.log({"batch_time": total_time})
-    start_time = end_time
-
+# 100 just to get the full time in
+for _ in range(100):
     if completed_steps >= num_training_steps:
-        break
+        break   
+    for step, batch in enumerate(train_dataloader):
+        with accelerator.accumulate(model):
+            outputs = model(**batch)
+            loss = outputs.loss
+            total_loss += loss.detach().float()
+            accelerator.backward(loss)
+            optimizer.step()
+            lr_scheduler.step()
+            optimizer.zero_grad()
+
+        if accelerator.sync_gradients:
+            completed_steps += 1
+        
+        end_time = time.time()
+        total_time = end_time - start_time 
+        accelerator.log({"batch_time": total_time})
+        start_time = end_time
+
+        if completed_steps >= num_training_steps:
+            break
 
 accelerator.end_training()
     
