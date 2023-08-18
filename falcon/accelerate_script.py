@@ -15,7 +15,7 @@ model_name = "trl-internal-testing/dummy-GPT2-correct-vocab"
 dataset_name = "timdettmers/openassistant-guanaco"
 dataset_text_field = "text"
 learning_rate = 1.41e-5
-batch_size = 8
+batch_size = 64
 max_seq_length = 512
 gradient_accumulation_steps = 1
 peft_lora_r = 64
@@ -93,7 +93,8 @@ accelerator.init_trackers("falcon", config={
     "model_name": model_name,
     "dataset_name": dataset_name,
     "batch_size": batch_size,
-    "accelerator_state": accelerator.state
+    "accelerator_state": accelerator.state,
+    "mixed_precision": accelerator.mixed_precision,
 })
 
 model.train()
