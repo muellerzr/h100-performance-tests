@@ -11,11 +11,11 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from transformers import DataCollatorForLanguageModeling
 import time
 
-model_name = "trl-internal-testing/dummy-GPT2-correct-vocab"
+model_name = "tiiuae/falcon-7b"
 dataset_name = "timdettmers/openassistant-guanaco"
 dataset_text_field = "text"
 learning_rate = 1.41e-5
-batch_size = 64
+batch_size = 8
 max_seq_length = 512
 gradient_accumulation_steps = 1
 peft_lora_r = 64
@@ -25,6 +25,7 @@ num_training_steps=500
 
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
+    trust_remote_code=True
 )
 
 
