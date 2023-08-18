@@ -95,7 +95,8 @@ accelerator.init_trackers("falcon", config={
     "batch_size": batch_size,
     "accelerator_state": accelerator.state,
     "mixed_precision": accelerator.mixed_precision,
-})
+},
+init_kwargs={"wandb": {"name": f'{accelerator.mixed_precision}_bs_{batch_size}'}})
 
 model.train()
 completed_steps = 0
