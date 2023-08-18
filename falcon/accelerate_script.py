@@ -77,12 +77,11 @@ def get_dataloaders(accelerator:Accelerator, batch_size:int = 8):
         "collate_fn": data_collator,
         "drop_last": True,
     }
-    train_dataloader = DataLoader(dataset["train"], **dataloader_params)
-    eval_dataloader = DataLoader(dataset["validation"], **dataloader_params)
-    return train_dataloader, eval_dataloader
+    train_dataloader = DataLoader(dataset, **dataloader_params)
+    return train_dataloader
 
 accelerator = Accelerator(log_with="wandb", gradient_accumulation_steps=gradient_accumulation_steps)
-train_dataloader, eval_dataloader = get_dataloaders(accelerator, batch_size)
+train_dataloader = get_dataloaders(accelerator, batch_size)
 
 optimizer = AdamW(params = model.parameters(), lr=learning_rate)
 
@@ -92,8 +91,8 @@ lr_scheduler = get_linear_schedule_with_warmup(
     num_training_steps=num_training_steps,
 )
 
-model, optimizer, train_dataloader, eval_dataloader, lr_scheduler = accelerator.prepare(
-    model, optimizer, train_dataloader, eval_dataloader, lr_scheduler
+model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
+    model, optimizer, train_dataloader, lr_scheduler
 )
 
 accelerator.init_trackers("falcon")
