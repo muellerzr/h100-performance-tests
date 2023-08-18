@@ -93,7 +93,7 @@ accelerator.init_trackers("falcon", config={
     "model_name": model_name,
     "dataset_name": dataset_name,
     "batch_size": batch_size,
-    "accelerator_state": dict(accelerator.state)
+    "accelerator_state": accelerator.state
 })
 
 model.train()
