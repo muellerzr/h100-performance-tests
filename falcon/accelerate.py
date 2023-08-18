@@ -8,7 +8,7 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 # from peft import LoraConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, get_linear_schedule_with_warmup
-from transformers.utils import find_labels
+from transformers import DataCollatorForLanguageModeling
 import time
 
 model_name = "trl-internal-testing/dummy-GPT2-correct-vocab"
@@ -16,7 +16,7 @@ dataset_name = "timdettmers/openassistant-guanaco"
 dataset_text_field = "text"
 learning_rate = 1.41e-5
 batch_size = 8
-seq_length = 512
+max_seq_length = 512
 gradient_accumulation_steps = 16
 peft_lora_r = 64
 peft_lora_alpha = 16
@@ -33,34 +33,29 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map = {"":0},
     torch_dtype = torch.bfloat16
 )
-signature = inspect.signature(model.forward)
-signature_columns = list(signature.parameters.keys())
-signature_columns += list(set(["label", "label_ids"] + find_labels(model.__class__)))
 
 
 def get_dataloaders(accelerator:Accelerator, batch_size:int = 8):
     dataset = load_dataset(dataset_name, split="train")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    ignored_columns = list(set(dataset.column_names) - set(signature_columns))
-    dataset = dataset.remove_columns(ignored_columns)
+    if getattr(tokenizer, "pad_token", None) is None:
+        tokenizer.pad_token = tokenizer.eos_token
 
-    def collate_fn(examples):
-        if accelerator.mixed_precision == "fp8":
-            pad_to_multiple_of = 16
-        elif accelerator.mixed_precision != "no":
-            pad_to_multiple_of = 8
-        else:
-            pad_to_multiple_of = None
-        return tokenizer.pad(
-            examples,
-            padding="longest",
-            pad_to_multiple_of=pad_to_multiple_of,
-            return_tensors="pt"
-        )
+    pad_to_multiple_of = None
+    if accelerator.mixed_precision == "fp8":
+        pad_to_multiple_of = 16
+    elif accelerator.mixed_precision != "no":
+        pad_to_multiple_of = 8
+
+    data_collator = DataCollatorForLanguageModeling(
+        tokenizer=tokenizer,
+        mlm=False,
+        pad_to_multiple_of=pad_to_multiple_of,
+    )
 
     dataloader_params = {
         "batch_size": batch_size, 
-        "collate_fn": collate_fn,
+        "collate_fn": data_collator,
         "drop_last": True,
     }
     train_dataloader = DataLoader(dataset["train"], **dataloader_params)
