@@ -27,7 +27,7 @@ peft_config = LoraConfig(
     lora_alpha=peft_lora_alpha,
     bias="none",
     task_type="CAUSAL_LM",
-    target_mdoules=["query_key_value"]
+    target_modules=["query_key_value"]
 )
 
 
