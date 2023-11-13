@@ -89,9 +89,11 @@ lr_scheduler = get_linear_schedule_with_warmup(
 
 model, optimizer = msamp.initialize(model, optimizer, opt_level="O2")
 
-# model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-#     model, optimizer, train_dataloader, lr_scheduler
-# )
+train_dataloader, lr_scheduler = accelerator.prepare(
+    train_dataloader, lr_scheduler
+)
+
+model.to(accelerator.device)
 
 accelerator.init_trackers("fp8-benchmarks", config={
     "model_name": model_name,
