@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 from transformers import AutoModelForCausalLM, AutoTokenizer, get_linear_schedule_with_warmup
 from transformers import DataCollatorForLanguageModeling
 import time
+import msamp
 
 model_name = "bigscience/bloomz-3b"
 dataset_name = "timdettmers/openassistant-guanaco"
@@ -86,9 +87,11 @@ lr_scheduler = get_linear_schedule_with_warmup(
     num_training_steps=num_training_steps,
 )
 
-model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-    model, optimizer, train_dataloader, lr_scheduler
-)
+model, optimizer = msamp.initialize(model, optimizer, opt_level="02")
+
+# model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
+#     model, optimizer, train_dataloader, lr_scheduler
+# )
 
 accelerator.init_trackers("fp8-benchmarks", config={
     "model_name": model_name,
