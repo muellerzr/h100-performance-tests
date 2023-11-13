@@ -3,7 +3,7 @@
 import torch
 from accelerate import Accelerator
 from datasets import load_dataset
-from peft import LoraConfig, get_peft_model
+#from peft import LoraConfig, get_peft_model
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from transformers import AutoModelForCausalLM, AutoTokenizer, get_linear_schedule_with_warmup
@@ -21,22 +21,12 @@ peft_lora_r = 64
 peft_lora_alpha = 16
 num_training_steps=200
 
-peft_config = LoraConfig(
-    r=peft_lora_r,
-    lora_alpha=peft_lora_alpha,
-    bias="none",
-    task_type="CAUSAL_LM",
-    target_modules=["query_key_value"]
-)
-
 
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
     trust_remote_code=True,
     torch_dtype=torch.bfloat16,
 )
-
-#model = get_peft_model(model, peft_config)
 
 
 def get_dataloaders(accelerator:Accelerator, batch_size:int = 8):
