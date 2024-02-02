@@ -1,0 +1,30 @@
+# Training script based on TRL, but using just accelerate
+# original script: https://github.com/huggingface/trl/blob/main/examples/scripts/sft_trainer.py
+import torch
+import sys
+from transformers import AutoConfig, AutoModelForCausalLM
+
+
+from te_llama import TELlamaForCausalLM
+model_name = "meta-llama/Llama-2-70b-hf"
+
+config = AutoConfig.from_pretrained(model_name)
+
+with torch.device("meta"):
+    if sys.argv[3] == 'HF':
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            config=config,
+            torch_dtype=torch.bfloat16,
+        )
+    else:
+        model = TELlamaForCausalLM.from_pretrained_local(
+            model_name,
+            config=config,
+            torch_dtype=torch.bfloat16,
+        )
+
+# Save the weights the first time around
+    
+
+
